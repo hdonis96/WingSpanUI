@@ -1,0 +1,20 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+using Xamarin.Forms;
+using Xamarin.Forms.Maps;
+
+namespace WingSpan2
+{
+    public class CustomMap : Map
+    {
+        public List<Position> ShapeCoordinates { get; set; }
+
+        public CustomMap()
+        {
+            ShapeCoordinates = new List<Position>();
+        }
+    }
+}
