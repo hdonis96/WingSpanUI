@@ -18,7 +18,7 @@ namespace WingSpan2
         private async void OnLoginButton_Clicked(object sender, EventArgs e)
         {
             //Grab the username and password from the XAML page through x:Names
-            var username = usernameEntry.Text;
+            var username = usernameEntry.Text; 
             var password = passwordEntry.Text;
 
             //Validation checks. Make sure the user has entered a username and password.

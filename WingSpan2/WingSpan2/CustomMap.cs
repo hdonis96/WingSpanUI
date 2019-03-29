@@ -11,10 +11,15 @@ namespace WingSpan2
     public class CustomMap : Map
     {
         public List<Position> ShapeCoordinates { get; set; }
+        public List<CustomPin> CustomPins { get; set; }
 
         public CustomMap()
         {
             ShapeCoordinates = new List<Position>();
+        }
+        public void addPin(CustomPin p)
+        {
+            CustomPins.Add(p);
         }
     }
 }

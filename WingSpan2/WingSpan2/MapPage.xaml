@@ -1,12 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="WingSpan2.MapPage">
+             x:Class="WingSpan2.MapPage"
+            xmlns:local="clr-namespace:WingSpan2; assembly=WingSpan2">
+        <local:CustomMap x:Name="customMap" MapType="Street" />
     <ContentPage.Content>
-        <StackLayout>
+        <!--   WidthRequest="{x:Static local:App.ScreenWidth}" 
+                         HeightRequest="{x:Static local:App.ScreenHeight}" /> -->
+           <StackLayout>
             <Label Text="Map Goes Here!!!"
                 VerticalOptions="CenterAndExpand" 
                 HorizontalOptions="CenterAndExpand" />
-        </StackLayout>
+        </StackLayout> 
     </ContentPage.Content>
 </ContentPage>
