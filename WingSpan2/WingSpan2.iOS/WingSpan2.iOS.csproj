@@ -95,6 +95,8 @@
     <AppExtensionDebugBundleId />
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CustomMapRenderer.cs" />
+    <Compile Include="CustomMKAnnotationView.cs" />
     <Compile Include="Main.cs" />
     <Compile Include="AppDelegate.cs" />
     <None Include="Entitlements.plist" />
@@ -167,5 +169,20 @@
       <Project>{04ADF1F0-0065-40E7-BE0A-223B107CB1A4}</Project>
       <Name>WingSpan2</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <BundleResource Include="Resources\pin.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <BundleResource Include="Resources\pinAq.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <BundleResource Include="Resources\pinBlue.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <BundleResource Include="Resources\pinPolygon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <BundleResource Include="Resources\eagle.png" />
   </ItemGroup>
 </Project>

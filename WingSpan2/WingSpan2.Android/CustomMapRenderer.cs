@@ -24,6 +24,9 @@ namespace WingSpan2.Droid
     {
         List<CustomPin> customPins;
         CustomMap map;
+        List<Position> shapeCoordinates;
+        Polygon polygon;
+        List<Marker> shapeMarkers = new List<Marker>();
 
         public CustomMapRenderer(Context context) : base(context)
         {
@@ -41,25 +44,75 @@ namespace WingSpan2.Droid
             {
                 map = (CustomMap)e.NewElement;
                 customPins = map.CustomPins;
+                shapeCoordinates = map.ShapeCoordinates;
                 Control.GetMapAsync(this);
             }
+            //TODO:: NativeMap.MyLocationChange
         }
 
         protected override void OnMapReady(GoogleMap map)
         {
             base.OnMapReady(map);
 
-           NativeMap.InfoWindowClick += OnInfoWindowClick;
+            NativeMap.InfoWindowClick += OnInfoWindowClick;
             NativeMap.SetInfoWindowAdapter(this);
             NativeMap.MarkerClick += OnMarkerClick;
             NativeMap.UiSettings.ZoomControlsEnabled = false;
             NativeMap.UiSettings.ScrollGesturesEnabled = false;
+            //  addShape();
+            NativeMap.InfoWindowLongClick += NativeMap_InfoWindowLongClick;
         }
 
-        public void OnMarkerClick(object sender, GoogleMap.MarkerClickEventArgs e)
+        private void NativeMap_InfoWindowLongClick(object sender, GoogleMap.InfoWindowLongClickEventArgs e)
+        {
+            int points = map.getPolygonPoints() + 1;
+            if (points > 4) return;
+            map.setPolygonPoints(points);
+            e.Marker.SetIcon(BitmapDescriptorFactory.FromResource(Resource.Drawable.pinPolygon));
+            shapeMarkers.Add(e.Marker);
+            double la = e.Marker.Position.Latitude;
+            double lo = e.Marker.Position.Longitude;
+            map.ShapeCoordinates.Add(new Position(la, lo));
+            if (points == 4) { addShape(); }
+        }
+        //add polygon shape to map
+        public void addShape()
+        {
+            PolygonOptions polygonOptions = new PolygonOptions();
+            polygonOptions.InvokeFillColor(0x66D0D0FF); //D0D0FF //00C8FF
+            polygonOptions.InvokeStrokeColor(0x660000FF);
+            polygonOptions.InvokeStrokeWidth(10.0f);
+            
+            foreach (var position in shapeCoordinates)
+            {
+                polygonOptions.Add(new LatLng(position.Latitude, position.Longitude));
+            }
+            polygon = NativeMap.AddPolygon(polygonOptions);
+            NativeMap.MapLongClick += longClick;
+        }
+
+        //when you long click the map, delete polygon
+        public void longClick(object sender, GoogleMap.MapLongClickEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine("map long clicked!------");
+            map.setPolygonPoints(0);
+            map.ShapeCoordinates.Clear();
+            polygon.Remove();
+            clearShapeMarkers();
+        }
+        public void clearShapeMarkers()
+        {
+            foreach (Marker marker in shapeMarkers)
+            {
+                marker.SetIcon(BitmapDescriptorFactory.FromResource(Resource.Drawable.pin));
+            }
+            shapeMarkers.Clear();
+        }
+
+        public void OnMarkerClick(object sender, GoogleMap.MarkerClickEventArgs e) //add this method first, then test!
         {
             e.Marker.ShowInfoWindow();
-        }
+        } //----------------------------------------------^^^^ put in iOS
         protected override MarkerOptions CreateMarker(Pin pin)
         { 
             var marker = new MarkerOptions();

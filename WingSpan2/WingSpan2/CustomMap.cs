@@ -12,14 +12,24 @@ namespace WingSpan2
     {
         public List<Position> ShapeCoordinates { get; set; }
         public List<CustomPin> CustomPins { get; set; }
+        public int polygonPoints;
 
         public CustomMap()
         {
             ShapeCoordinates = new List<Position>();
+            polygonPoints = 0;
         }
         public void addPin(CustomPin p)
         {
             CustomPins.Add(p);
+        }
+        public int getPolygonPoints()
+        {
+            return polygonPoints;
+        }
+        public void setPolygonPoints(int points)
+        {
+            polygonPoints = points;
         }
     }
 }
