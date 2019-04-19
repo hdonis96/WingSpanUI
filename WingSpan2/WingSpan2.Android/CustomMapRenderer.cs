@@ -16,18 +16,24 @@ using Xamarin.Forms;
 using Xamarin.Forms.Maps;
 using WingSpan2.Droid;
 using Xamarin.Forms.Maps.Android;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Collections;
 
 [assembly: ExportRenderer(typeof(CustomMap), typeof(WingSpan2.Droid.CustomMapRenderer))]
 namespace WingSpan2.Droid
 {
     class CustomMapRenderer : MapRenderer, GoogleMap.IInfoWindowAdapter
     {
-        List<CustomPin> customPins;
         CustomMap map;
         List<Position> shapeCoordinates;
         Polygon polygon;
         List<Marker> shapeMarkers = new List<Marker>();
-
+        Marker lastClicked = null;
+        long milliseconds = 0;
+        Dictionary<MarkerOptions, Pin> markerMap = new Dictionary<MarkerOptions, Pin>();
+        bool init = true;
+        List<Marker> _markers = new List<Marker>();
         public CustomMapRenderer(Context context) : base(context)
         {
         }
@@ -43,16 +49,15 @@ namespace WingSpan2.Droid
             if (e.NewElement != null)
             {
                 map = (CustomMap)e.NewElement;
-                customPins = map.CustomPins;
+              //  customPins = map.Pins;
                 shapeCoordinates = map.ShapeCoordinates;
-                Control.GetMapAsync(this);
+                Control.GetMapAsync(this);  
             }
-            //TODO:: NativeMap.MyLocationChange
         }
-
-        protected override void OnMapReady(GoogleMap map)
+       
+        protected override void OnMapReady(GoogleMap mapG)
         {
-            base.OnMapReady(map);
+            base.OnMapReady(mapG);
 
             NativeMap.InfoWindowClick += OnInfoWindowClick;
             NativeMap.SetInfoWindowAdapter(this);
@@ -61,6 +66,13 @@ namespace WingSpan2.Droid
             NativeMap.UiSettings.ScrollGesturesEnabled = false;
             //  addShape();
             NativeMap.InfoWindowLongClick += NativeMap_InfoWindowLongClick;
+            // NativeMap.MyLocationChange += method; 
+            if (init)
+            {
+                var incc = Map.Pins as INotifyCollectionChanged;
+                incc.CollectionChanged += OnCollectionChanged;
+                init = false;
+            }
         }
 
         private void NativeMap_InfoWindowLongClick(object sender, GoogleMap.InfoWindowLongClickEventArgs e)
@@ -75,6 +87,19 @@ namespace WingSpan2.Droid
             map.ShapeCoordinates.Add(new Position(la, lo));
             if (points == 4) { addShape(); }
         }
+        private void doubleClick(Marker m)
+        {
+            int points = map.getPolygonPoints() + 1;
+            if (points > 4) return;
+            map.setPolygonPoints(points);
+            m.SetIcon(BitmapDescriptorFactory.FromResource(Resource.Drawable.pinPolygon));
+            shapeMarkers.Add(m);
+            double la = m.Position.Latitude;
+            double lo = m.Position.Longitude;
+            map.ShapeCoordinates.Add(new Position(la, lo));
+            if (points == 4) { addShape(); }
+        }
+
         //add polygon shape to map
         public void addShape()
         {
@@ -94,7 +119,6 @@ namespace WingSpan2.Droid
         //when you long click the map, delete polygon
         public void longClick(object sender, GoogleMap.MapLongClickEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine("map long clicked!------");
             map.setPolygonPoints(0);
             map.ShapeCoordinates.Clear();
             polygon.Remove();
@@ -109,21 +133,59 @@ namespace WingSpan2.Droid
             shapeMarkers.Clear();
         }
 
-        public void OnMarkerClick(object sender, GoogleMap.MarkerClickEventArgs e) //add this method first, then test!
+        //also check for double click for the polygon
+        public void OnMarkerClick(object sender, GoogleMap.MarkerClickEventArgs e)
         {
+            long curMil = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+            if (lastClicked != null)
+            {
+                if (lastClicked.Equals(e.Marker))
+                {
+                    if (curMil - milliseconds < 4000)
+                    {
+                        doubleClick(e.Marker);
+                        lastClicked = null;
+                        milliseconds = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                        return;
+                    }
+                }
+            }
+            lastClicked = e.Marker;
             e.Marker.ShowInfoWindow();
-        } //----------------------------------------------^^^^ put in iOS
+            milliseconds = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+        }
         protected override MarkerOptions CreateMarker(Pin pin)
-        { 
-            var marker = new MarkerOptions();
+        {
+            MarkerOptions marker = new MarkerOptions();
+            double la = 37.008503;
+            double lo = -127.810804;
+            marker.SetPosition(new LatLng(la, lo));
+            marker.SetIcon(BitmapDescriptorFactory.FromResource(Resource.Drawable.pinWhite));
+            return marker;
+         }
+
+        protected MarkerOptions CreateCustomMarker(CustomPin pin)
+        {
+            MarkerOptions marker = new MarkerOptions();
             marker.SetPosition(new LatLng(pin.Position.Latitude, pin.Position.Longitude));
             marker.SetTitle(pin.Label);
             marker.SetSnippet(pin.Address);
-            if (pin.Id.ToString() == "hasClicked")
+            
+            //   if (pin.Id.ToString() == "hasClicked")
+            CustomPin customP = null;
+            foreach (var p in map.Pins)
+            {
+                if (p.Position == pin.Position)
+                {
+                    customP = (CustomPin) p;
+                    break;
+                }
+            }
+            if (customP.hasClicked)
             {
                 marker.SetIcon(BitmapDescriptorFactory.FromResource(Resource.Drawable.pinBlue));
             }
-            else if (pin.Id.ToString() == "yourLocation")
+            else if (customP.isYourLocation)
             {
                 marker.SetIcon(BitmapDescriptorFactory.FromResource(Resource.Drawable.pinAq));
             }
@@ -133,12 +195,65 @@ namespace WingSpan2.Droid
             }
             return marker;
         }
+        void AddPins(IList pins)
+        {
+            GoogleMap map = NativeMap;
+            if (map == null)
+            {
+                return;
+            }
+
+            if (_markers == null)
+            {
+                _markers = new List<Marker>();
+            }
         
+           _markers.AddRange(pins.Cast<CustomPin>().Select(p =>
+            {
+                CustomPin pin = p;
+                var opts = CreateCustomMarker(pin);
+                var marker = map.AddMarker(opts);
+                // associate pin with marker for later lookup in event handlers
+                pin.Id = marker.Id;
+                return marker;
+            }));
+        }
+        void OnCollectionChanged(object sender, NotifyCollectionChangedEventArgs notifyCollectionChangedEventArgs)
+        {
+            switch (notifyCollectionChangedEventArgs.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    AddPins(notifyCollectionChangedEventArgs.NewItems);
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    RemovePins(notifyCollectionChangedEventArgs.OldItems);
+                    break;
+            }
+        }
+        void RemovePins(IList pins)
+        {
+            if (_markers == null)
+            {
+                return;
+            }
+            foreach (Pin p in pins)
+            {
+                var marker = _markers.FirstOrDefault(m => m.Id == (string)p.Id);
+                if (marker == null)
+                {
+                    continue;
+                }
+                System.Diagnostics.Debug.WriteLine("remove pin in custom renderer! " + p.Label + " " + p.Address + ", id= " + p.Id);
+                
+                marker.Remove();
+                _markers.Remove(marker);
+            }
+
+        }
 
         // happens when info box is clicked
         void OnInfoWindowClick(object sender, GoogleMap.InfoWindowClickEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine("info box clicked");
             var customPin = GetCustomPin(e.Marker);
             if (customPin == null)
             {
@@ -172,15 +287,8 @@ namespace WingSpan2.Droid
                     return null;
                 }
 
-                if (customPin.Id.ToString() == "Xamarin")
-                {
-                    view = inflater.Inflate(Resource.Layout.XamarinMapInfoWindow, null);
-                }
-                else
-                {
-                    view = inflater.Inflate(Resource.Layout.MapInfoWindow, null);
-                }
-
+                //  if (customPin.Id.ToString() == "Xamarin")
+                view = inflater.Inflate(Resource.Layout.MapInfoWindow, null);
                 var infoTitle = view.FindViewById<TextView>(Resource.Id.InfoWindowTitle);
                 var infoSubtitle = view.FindViewById<TextView>(Resource.Id.InfoWindowSubtitle);
 
@@ -209,11 +317,11 @@ namespace WingSpan2.Droid
             var position = new Position(annotation.Position.Latitude, annotation.Position.Longitude);
             try
             {
-                foreach (var pin in customPins) 
+                foreach (var pin in map.Pins) 
                 {
                     if (pin.Position == position)
                     {
-                        return pin;
+                        return (CustomPin) pin;
                     }
                 }
             }

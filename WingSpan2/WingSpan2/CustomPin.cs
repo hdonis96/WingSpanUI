@@ -10,7 +10,8 @@ namespace WingSpan2
 {
     public class CustomPin : Pin
     {
-        public Boolean hasClicked { get; set; }
+        public bool hasClicked { get; set; }
+        public bool isYourLocation { get; set; }
         public string Url { get; set; }
 
         public CustomPin()

@@ -11,18 +11,19 @@ namespace WingSpan2
     public class CustomMap : Map
     {
         public List<Position> ShapeCoordinates { get; set; }
-        public List<CustomPin> CustomPins { get; set; }
+     //   public List<CustomPin> CustomPins = new List<CustomPin>(); // { get; set; }
         public int polygonPoints;
 
         public CustomMap()
         {
             ShapeCoordinates = new List<Position>();
+            //CustomPins = new List<CustomPin>();
             polygonPoints = 0;
         }
-        public void addPin(CustomPin p)
-        {
-            CustomPins.Add(p);
-        }
+    //    public void addPin(CustomPin p)
+    //    {
+    //        CustomPins.Add(p);
+    //    }
         public int getPolygonPoints()
         {
             return polygonPoints;
