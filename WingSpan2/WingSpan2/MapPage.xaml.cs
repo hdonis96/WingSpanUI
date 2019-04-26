@@ -32,7 +32,8 @@ namespace WingSpan2
         Color minMaxColor = Color.Green;
         int filteredPinsPlaced = 0;
         double zoomInAmt = 0.05; //in miles
-        double zoomOutAmt = 0.12; 
+        double zoomOutAmt = 0.12;
+        bool startAddOver = false;
 
         public MapPage() 
         {
@@ -81,7 +82,7 @@ namespace WingSpan2
                 // Unable to get location
                 Debug.WriteLine("------can't get location----------");
             }
-               lat = 38.824310; lon = -121.282731; //rocklin house
+            //   lat = 38.824310; lon = -121.282731; //rocklin house
             //lat = 38.742248; lon = -121.290019; //roseville house
             //  lat = 38.560923; lon = -121.422378; //<- sac state
             createMapAsync(lat, lon, "Your Location", "home"); 
@@ -160,7 +161,7 @@ namespace WingSpan2
                         yourAddress = address;
                         yourCityState = cityState;
                     }
-                    addressInfo.Add(houseInfo);
+                    addressInfo.Add(houseInfo); 
                     createPinAsync(customMap, lat1, lon1, isLocation, address, cityState);
                 }
             }
@@ -180,7 +181,6 @@ namespace WingSpan2
                 {
                     lat1 = location.Latitude;
                     lon1 = location.Longitude;
-                    Debug.WriteLine($"Latitude: {location.Latitude}, Longitude: {location.Longitude}");
                 }
                 var pin = new CustomPin
                 {
@@ -193,24 +193,8 @@ namespace WingSpan2
                     Url = "http://xamarin.com/about/",
                     hasClicked = false
                 };
-
-               if(!isLocation)
-                {
-                    pin.Clicked += async (sender, args) =>
-                    {
-                        pinClickedAsync(pin, customMap);
-                    };
-                }
-                else
-                {
-                    pin.Clicked += async (sender, args) =>
-                    {
-                       // popUpInfoAsync(address, cityState);
-                        pinClickedAsync(pin, customMap);
-                    };
-                }
+                pin.Clicked += async (sender, args) => { pinClickedAsync(pin, customMap); };
                 customMap.Pins.Add(pin);
-                
             }
             catch (Exception ex)
             {
@@ -227,19 +211,20 @@ namespace WingSpan2
             System.Diagnostics.Debug.WriteLine(address + " " + cityState);
             customMap.Pins.Remove(pin);
 
-            var newPin = new CustomPin
-            {
-                Type = PinType.Place,
-                Position = p,
-                Label = address,
-                Address = cityState,
-                // Id = "hasClicked",
-                Url = "http://xamarin.com/about/",
-                isYourLocation = isLocation,
-                hasClicked = true
-            };
-            customMap.Pins.Add(newPin);
-            await popUpInfoAsync(address, cityState);
+                var newPin = new CustomPin
+                {
+                    Type = PinType.Place,
+                    Position = p,
+                    Label = address,
+                    Address = cityState,
+                    // Id = "hasClicked",
+                    Url = "http://xamarin.com/about/",
+                    isYourLocation = isLocation,
+                    hasClicked = true
+                };
+                newPin.Clicked += async (sender, args) => { popUpInfoAsync(address, cityState); };
+                customMap.Pins.Add(newPin);
+                await popUpInfoAsync(address, cityState);
         }
 
         //pop up info on a house---------
@@ -254,6 +239,7 @@ namespace WingSpan2
         }
         public void placeMap(CustomMap customMap)
         {
+            customMap.MoveToRegion(MapSpan.FromCenterAndRadius(new Position(lat, lon), Distance.FromMiles(zoomOutAmt)));
             customMap.HasScrollEnabled = false;
             customMap.HasZoomEnabled = false;
             var stack = new StackLayout { Spacing = 0 };
@@ -366,34 +352,38 @@ namespace WingSpan2
             };
         }
 
+        // finds your new location and refreshes the map based on your new/current location
         public async Task refreshLocation(CustomMap customMap)
         {
             Debug.WriteLine("--------location refreshed!");
             StackLayout stack = new StackLayout {Spacing = 0 };
-            stack.Children.Add(new Label { Text = "changing location..." });
+            stack.Children.Add(new Label { Text = "📌 changing location...🕐" });
             Content = stack;
             try
             {
-              //  var request = new GeolocationRequest(GeolocationAccuracy.Low);
-             //   var location = await Geolocation.GetLocationAsync(request);
-             //   if (location != null)
-             //   {
-             //       lat = location.Latitude;
-             //       lon = location.Longitude;
-             //   }
+                var request = new GeolocationRequest(GeolocationAccuracy.Low);
+                var location = await Geolocation.GetLocationAsync(request);
+                if (location != null)
+                {
+                    lat = location.Latitude;
+                    lon = location.Longitude;
+                }
                 customMap.ShapeCoordinates = null;
                 customMap.polygonPoints = 0;
-                foreach (CustomPin p in customMap.Pins) customMap.Pins.Remove(p);
+                foreach (CustomPin p in customMap.Pins) customMap.Pins.Remove(p); //might cause an error
                 addressInfo = new ArrayList();
                 yourAddress = ""; yourCityState = "";
-                lat = 38.826200; lon = -121.282283; //testing
-                customMap = null;
+               // lat = 38.826200; lon = -121.282283; //testing!!
                 createMapAsync(lat, lon, "Your Location", "home");
             }
             catch (Exception e)
             {
-                await DisplayAlert("", "Could not refresh location", "Ok");
-                Debug.WriteLine(e.ToString());
+                Debug.WriteLine("error: " + e.ToString()); //this error is normally just because it's deleting objects that are being iterated over.
+                                                            //can ignore this error
+                addressInfo = new ArrayList();
+                yourAddress = ""; yourCityState = "";
+               // lat = 38.826200; lon = -121.282283; //testing!!
+                createMapAsync(lat, lon, "Your Location", "home");
             }
         }
 
